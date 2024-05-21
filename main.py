@@ -55,7 +55,7 @@ def save_content_to_pdf(content, image_url=None):
 
 # Streamlit app
 def main():
-    st.title("Web Content Search and Save")
+    st.title("Public Profiling")
 
     # Input search keyword
     keyword = st.text_input("Enter a search keyword:")
@@ -95,7 +95,7 @@ def main():
                 )
 
             # Save content to a PDF file and provide download link
-            pdf_file_path = save_content_to_pdf(combined_content, images[0] if images[0] else None)
+            pdf_file_path = save_content_to_pdf(images[1] if images[1] else None, combined_content)
             with open(pdf_file_path, "rb") as file:
                 st.download_button(
                     label="Download as PDF",
