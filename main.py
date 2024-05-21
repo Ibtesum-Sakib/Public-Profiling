@@ -31,8 +31,8 @@ def fetch_content_and_image(url, keyword):
             break
     
     # If no specific image is found, take the second image
-    if not image and len(img_tags) > 1:
-        image = img_tags[1].get('src')
+    if not image and len(img_tags) > 2:
+        image = img_tags[2].get('src')
     
     # Adjust the image URL if necessary
     if image:
