@@ -22,8 +22,8 @@ def fetch_content(url):
 
 # Function to save content to a text file
 def save_content_to_txt(content):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
-        tmp_file.write(content.encode('utf-8'))
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8') as tmp_file:
+        tmp_file.write(content)
         return tmp_file.name
 
 # Function to save content to a PDF file
@@ -31,17 +31,17 @@ def save_content_to_pdf(content):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, content)
+    pdf.multi_cell(0, 10, content.encode('latin-1', 'replace').decode('latin-1'))  # Handling encoding issues for PDF
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         pdf.output(tmp_file.name)
         return tmp_file.name
 
 # Streamlit app
 def main():
-    st.title("Web Content Search and Save")
+    st.title("Public Profiling")
 
     # Input search keyword
-    keyword = st.text_input("Enter a search keyword:")
+    keyword = st.text_input("Enter a Name of a Person:")
 
     if st.button("Search"):
         if keyword:
@@ -64,7 +64,7 @@ def main():
             # Save content to a text file and provide download link
             txt_file_path = save_content_to_txt(combined_content)
             with open(txt_file_path, "rb") as file:
-                btn = st.download_button(
+                st.download_button(
                     label="Download as TXT",
                     data=file,
                     file_name="content.txt",
@@ -74,7 +74,7 @@ def main():
             # Save content to a PDF file and provide download link
             pdf_file_path = save_content_to_pdf(combined_content)
             with open(pdf_file_path, "rb") as file:
-                btn = st.download_button(
+                st.download_button(
                     label="Download as PDF",
                     data=file,
                     file_name="content.pdf",
@@ -86,4 +86,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
