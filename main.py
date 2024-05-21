@@ -2,75 +2,88 @@ import streamlit as st
 from bs4 import BeautifulSoup as bs
 import requests
 from googlesearch import search
-import os
 from fpdf import FPDF
+import tempfile
 
-# Function to perform Google search and retrieve text content
-def google_search_and_display_content(keyword):
-    # Perform the search and store the links
+# Function to perform Google search and retrieve links
+def perform_google_search(keyword, num_results=10):
     links = []
-    for url in search(keyword, num_results=10):
+    for url in search(keyword, num_results=num_results):
         links.append(url)
+    return links
 
-    # Fetch content from the first three links
-    contents = []
-    for link in links[:3]:
-        page = requests.get(link)
-        soup = bs(page.content, 'html.parser')
-        paragraphs = [tag.text for tag in soup.select('p')]
-        content = "\n".join(paragraphs)
-        contents.append(content)
-
-    return contents
+# Function to fetch content from a URL
+def fetch_content(url):
+    page = requests.get(url)
+    soup = bs(page.content, 'html.parser')
+    paragraphs = [tag.text for tag in soup.select('p')]
+    content = "\n".join(paragraphs)
+    return content
 
 # Function to save content to a text file
-def save_content_to_txt(content, filename):
-    with open(filename, "w", encoding="utf-8") as file:
-        for idx, text in enumerate(content, start=1):
-            file.write(f"===== Link {idx} =====\n")
-            file.write(text)
-            file.write("\n\n")
+def save_content_to_txt(content):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
+        tmp_file.write(content.encode('utf-8'))
+        return tmp_file.name
 
 # Function to save content to a PDF file
-def save_content_to_pdf(content, filename):
+def save_content_to_pdf(content):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    for idx, text in enumerate(content, start=1):
-        pdf.multi_cell(0, 10, f"===== Link {idx} =====\n{text}")
-    pdf.output(filename)
+    pdf.multi_cell(0, 10, content)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        pdf.output(tmp_file.name)
+        return tmp_file.name
 
 # Streamlit app
 def main():
-    st.title("Public Profiling")
-    st.write("Enter a name to search and display content.")
+    st.title("Web Content Search and Save")
 
-    # Input search query
-    search_query = st.text_input("Enter a name:", "")
+    # Input search keyword
+    keyword = st.text_input("Enter a search keyword:")
 
-    # Select save format
-    save_format = st.radio("Select format to save:", ("Text", "PDF"))
-
-    # Perform search and display content
     if st.button("Search"):
-        if search_query:
-            results = google_search_and_display_content(search_query)
-            for idx, result in enumerate(results, start=1):
-                st.write(f"===== Link {idx} =====")
-                st.write(result)
+        if keyword:
+            # Perform Google search
+            links = perform_google_search(keyword)
+            if not links:
+                st.write("No links found.")
+                return
 
-            # Save content to a file
-            desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-            if save_format == "Text":
-                filename = os.path.join(desktop_path, f"{search_query}_content.txt")
-                save_content_to_txt(results, filename)
-                st.write(f"Content saved to: {filename}")
-            else:
-                filename = os.path.join(desktop_path, f"{search_query}_content.pdf")
-                save_content_to_pdf(results, filename)
-                st.write(f"Content saved to: {filename}")
+            # Loop through the links and fetch content
+            contents = []
+            for link in links[:3]:  # Fetching content from the first three links
+                content = fetch_content(link)
+                contents.append(content)
+
+            # Combine contents for display and saving
+            combined_content = "\n\n".join([f"Link {idx+1}:\n{link}\n\n{content}" for idx, (link, content) in enumerate(zip(links, contents))])
+            st.write(combined_content)
+
+            # Save content to a text file and provide download link
+            txt_file_path = save_content_to_txt(combined_content)
+            with open(txt_file_path, "rb") as file:
+                btn = st.download_button(
+                    label="Download as TXT",
+                    data=file,
+                    file_name="content.txt",
+                    mime="text/plain"
+                )
+
+            # Save content to a PDF file and provide download link
+            pdf_file_path = save_content_to_pdf(combined_content)
+            with open(pdf_file_path, "rb") as file:
+                btn = st.download_button(
+                    label="Download as PDF",
+                    data=file,
+                    file_name="content.pdf",
+                    mime="application/pdf"
+                )
+
         else:
-            st.write("Please enter a name to search.")
+            st.write("Please enter a search keyword.")
 
 if __name__ == "__main__":
     main()
+
