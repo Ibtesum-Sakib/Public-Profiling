@@ -12,22 +12,25 @@ def perform_google_search(keyword, num_results=10):
         links.append(url)
     return links
 
-# Function to fetch content and the second image URL from a page
-def fetch_content_and_second_image(url):
+# Function to fetch content and an image URL from a page
+def fetch_content_and_person_image(url, person_name):
     page = requests.get(url)
     soup = bs(page.content, 'html.parser')
     paragraphs = [tag.text for tag in soup.select('p')]
     content = "\n".join(paragraphs)
     
-    # Try to find the second image
+    # Try to find an image of the person
     image = None
     img_tags = soup.find_all('img')
-    if len(img_tags) > 1:
-        image = img_tags[1].get('src')
-        if image and image.startswith('//'):
-            image = 'https:' + image
-        elif image and not image.startswith('http'):
-            image = requests.compat.urljoin(url, image)
+    for img in img_tags:
+        alt_text = img.get('alt', '').lower()
+        if person_name.lower() in alt_text:
+            image = img.get('src')
+            if image.startswith('//'):
+                image = 'https:' + image
+            elif not image.startswith('http'):
+                image = requests.compat.urljoin(url, image)
+            break
     
     return content, image
 
@@ -58,7 +61,7 @@ def main():
     st.title("Public Profiling")
 
     # Input search keyword
-    keyword = st.text_input("Enter a name of a person:")
+    keyword = st.text_input("Enter a full name of a person:")
 
     if st.button("Search"):
         if keyword:
@@ -72,7 +75,7 @@ def main():
             contents = []
             images = []
             for link in links[:3]:  # Fetching content from the first three links
-                content, image = fetch_content_and_second_image(link)
+                content, image = fetch_content_and_person_image(link, keyword)
                 contents.append(content)
                 images.append(image)
 
@@ -80,9 +83,9 @@ def main():
             combined_content = "\n\n".join([f"Link {idx+1}:\n{link}\n\n{content}" for idx, (link, content) in enumerate(zip(links, contents))])
             st.write(combined_content)
             
-            # Display the second image if available
+            # Display the first person image if available
             if images[0]:
-                st.image(images[0], caption='Second image from the first link')
+                st.image(images[0], caption='Image of the person from the first link')
 
             # Save content to a text file and provide download link
             txt_file_path = save_content_to_txt(combined_content)
