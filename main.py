@@ -13,7 +13,7 @@ def perform_google_search(keyword, num_results=10):
     return links
 
 # Function to fetch content and an image URL from a page
-def fetch_content_and_person_image(url, person_name):
+def fetch_content_and_image(url, keyword):
     page = requests.get(url)
     soup = bs(page.content, 'html.parser')
     paragraphs = [tag.text for tag in soup.select('p')]
@@ -22,15 +22,24 @@ def fetch_content_and_person_image(url, person_name):
     # Try to find an image of the person
     image = None
     img_tags = soup.find_all('img')
+    
+    # Search for image with keyword in alt text
     for img in img_tags:
         alt_text = img.get('alt', '').lower()
-        if person_name.lower() in alt_text:
+        if keyword.lower() in alt_text:
             image = img.get('src')
-            if image.startswith('//'):
-                image = 'https:' + image
-            elif not image.startswith('http'):
-                image = requests.compat.urljoin(url, image)
             break
+    
+    # If no specific image is found, take the second image
+    if not image and len(img_tags) > 1:
+        image = img_tags[1].get('src')
+    
+    # Adjust the image URL if necessary
+    if image:
+        if image.startswith('//'):
+            image = 'https:' + image
+        elif not image.startswith('http'):
+            image = requests.compat.urljoin(url, image)
     
     return content, image
 
@@ -48,8 +57,11 @@ def save_content_to_pdf(content, image_url=None):
     
     # Add the image if available
     if image_url:
-        pdf.image(image_url, x=10, y=8, w=100)
-        pdf.ln(85)  # Move below the image
+        try:
+            pdf.image(image_url, x=10, y=8, w=100)
+            pdf.ln(85)  # Move below the image
+        except Exception as e:
+            st.write(f"Could not load image: {e}")
 
     pdf.multi_cell(0, 10, content.encode('latin-1', 'replace').decode('latin-1'))  # Handling encoding issues for PDF
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
@@ -61,7 +73,7 @@ def main():
     st.title("Public Profiling")
 
     # Input search keyword
-    keyword = st.text_input("Enter a full name of a person:")
+    keyword = st.text_input("Enter a name of a person:")
 
     if st.button("Search"):
         if keyword:
@@ -75,7 +87,7 @@ def main():
             contents = []
             images = []
             for link in links[:3]:  # Fetching content from the first three links
-                content, image = fetch_content_and_person_image(link, keyword)
+                content, image = fetch_content_and_image(link, keyword)
                 contents.append(content)
                 images.append(image)
 
