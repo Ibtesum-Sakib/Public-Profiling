@@ -75,15 +75,16 @@ def main():
                 content, image = fetch_content_and_image(link)
                 contents.append(content)
                 images.append(image)
+            
+            # Display the first image if available
+            if images[1]:
+                st.image(images[1], caption='First image from the first link')
 
             # Combine contents for display and saving
             combined_content = "\n\n".join([f"Link {idx+1}:\n{link}\n\n{content}" for idx, (link, content) in enumerate(zip(links, contents))])
             st.write(combined_content)
             
-            # Display the first image if available
-            if images[0]:
-                st.image(images[0], caption='First image from the first link')
-
+            
             # Save content to a text file and provide download link
             txt_file_path = save_content_to_txt(combined_content)
             with open(txt_file_path, "rb") as file:
